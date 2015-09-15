@@ -159,7 +159,7 @@ utils.postTemplate = function(value) {
         "encodedValue": value,
         "emailAddress": "gmahomarf@gmail.com",
         "name": "Gazy Mahomar",
-        "webhookUrl": "https://aa-dev-challenge.herokuapp.com/webhook",
+        "webhookUrl": "https://aa-dev-challenge.herokuapp.com/webhookv2",
         "repoUrl": "https://github.com/gmahomarf/aa-dev-challenge"
     };
 };

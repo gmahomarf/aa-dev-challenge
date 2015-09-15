@@ -58,7 +58,7 @@ if (argv.hack) {
 
                     if (response.statusCode !== 200) {
                         console.log("GET /values/%s got status code %s", u, response.statusCode);
-                        return reject(err);
+                        return reject(body);
                     }
 
                     request({
@@ -75,7 +75,7 @@ if (argv.hack) {
 
                         if (response.statusCode !== 200) {
                             console.log("GET /encoded/%s got status code %s", u, response.statusCode);
-                            return reject();
+                            return reject(encodedResult);
                         }
 
                         resolve({
@@ -109,12 +109,12 @@ if (argv.hack) {
                         }, function(err, response, result) {
                             if (err) {
                                 console.log(err);
-                                return reject();
+                                return reject(err);
                             }
 
                             if (response.statusCode !== 200) {
                                 console.log("POST /values/%s got status code %s", r.u, response.statusCode);
-                                return reject(err);
+                                return reject(result);
                             }
 
                             resolve(result);
