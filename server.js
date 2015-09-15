@@ -61,6 +61,30 @@ server.route([
         }
     },
     {
+        method: "GET",
+        path: "/v2",
+        handler: function(req, reply) {
+            var MongoClient = require('mongodb').MongoClient;
+            var mongoUrl = process.env.MONGOLAB_URI || localMongoUrl;
+            MongoClient.connect(mongoUrl, function(err, db) {
+                if (err) {
+                    console.error(err);
+                    return reply(err);
+                }
+
+                var collection = db.collection("secretsv2");
+
+                collection.find({}).toArray(function(err, docs) {
+                    var data = "";
+                    docs.forEach(function(d) {
+                        data += "<tr><td>" + d.timestamp.toString() + "</td><td>" + d.secret + "</td></tr>";
+                    });
+                    reply(htmlTemplate.replace("{{secrets}}", data));
+                });
+            });
+        }
+    },
+    {
         method: "POST",
         path: "/webhook",
         handler: function(req, reply) {
@@ -75,6 +99,41 @@ server.route([
                     }
 
                     var collection = db.collection("secrets");
+
+                    collection.insert({
+                        timestamp: new Date(),
+                        secret: secret
+                    }, function(err, result) {
+                        if (err) {
+                            console.error(err);
+                            return reply();
+                        }
+
+                        db.close();
+
+                        reply();
+                    });
+
+
+                });
+            }
+        }
+    },
+    {
+        method: "POST",
+        path: "/webhookv2",
+        handler: function(req, reply) {
+            var secret = req.payload.secret;
+            if (secret) {
+                var MongoClient = require('mongodb').MongoClient;
+                var mongoUrl = process.env.MONGOLAB_URI || localMongoUrl;
+                MongoClient.connect(mongoUrl, function(err, db) {
+                    if (err) {
+                        console.error(err);
+                        return reply(err);
+                    }
+
+                    var collection = db.collection("secretsv2");
 
                     collection.insert({
                         timestamp: new Date(),

@@ -4,7 +4,7 @@ var Promise = require("Bluebird");
 
 var utils = require("./utils");
 
-var baseUrl = "http://internal-comfybuffalo-1-dev.apphb.com";
+var baseUrl = "http://internal-devchallenge-2-dev.apphb.com";
 
 var lists = [];
 
@@ -62,12 +62,12 @@ if (argv.hack) {
                     }
 
                     request({
-                        url: baseUrl + "/encoded/" + u,
+                        url: baseUrl + "/encoded/" + u + "/" + body.algorithm,
                         headers: {
                             Accept: "application/json"
                         },
                         json: true
-                    }, function(err, response, body) {
+                    }, function(err, response, encodedResult) {
                         if (err) {
                             console.log(err);
                             return reject(err);
@@ -78,10 +78,28 @@ if (argv.hack) {
                             return reject();
                         }
 
-                        var postData = utils.postTemplate(body.encoded);
+                        resolve({
+                            u: u,
+                            encoded: encodedResult.encoded,
+                            algorithm: body.algorithm
+                        });
+                    });
+                });
+            })
+        );
+    });
+
+    Promise.all(promises).then(function(results) {
+        console.log(JSON.stringify(results, null, 4));
+        var morePromises = [];
+        results.forEach(
+            function(r) {
+                morePromises.push(
+                    new Promise(function(resolve, reject) {
+                        var postData = utils.postTemplate(r.encoded);
                         request({
                             method: "POST",
-                            uri: baseUrl + "/values/" + u,
+                            uri: baseUrl + "/values/" + r.u + "/" + r.algorithm,
                             headers: {
                                 Accept: "application/json",
                                 "Content-Type": "application/json"
@@ -95,21 +113,23 @@ if (argv.hack) {
                             }
 
                             if (response.statusCode !== 200) {
-                                console.log("POST /values/%s got status code %s", u, response.statusCode);
+                                console.log("POST /values/%s got status code %s", r.u, response.statusCode);
                                 return reject(err);
                             }
 
                             resolve(result);
                         });
-                    });
-                });
-            })
+                    })
+                );
+            }
         );
-    });
-
-    Promise.all(promises).then(function(results) {
-        console.log(JSON.stringify(results, null, 4));
-        process.exit();
+        Promise.all(morePromises).then(function(postResults) {
+            console.log(JSON.stringify(postResults, null, 4));
+            process.exit();
+        }).catch(function(err) {
+            console.error("ERROR: %s", err);
+            process.exit(1);
+        });
     }).catch(function(err) {
         console.error("ERROR: %s", err);
         process.exit(1);
