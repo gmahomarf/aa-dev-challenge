@@ -53,7 +53,7 @@ server.route([
                 collection.find({}).toArray(function(err, docs) {
                     var data = "";
                     docs.forEach(function(d) {
-                        data += "<tr><td>" + d.timestamp.toISOString() + "</td><td>" + d.secret + "</td></tr>";
+                        data += "<tr><td>" + d.timestamp.toString() + "</td><td>" + d.secret + "</td></tr>";
                     });
                     reply(htmlTemplate.replace("{{secrets}}", data));
                 });
