@@ -9,7 +9,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bluebird": "^2.10.0",
     "hapi": "^10.0.0",
+    "minimist": "^1.2.0",
     "mongodb": "^2.0.43",
     "request": "^2.61.0",
     "uuid": "^2.0.1"
