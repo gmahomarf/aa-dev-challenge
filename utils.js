@@ -100,16 +100,12 @@ utils.shiftVowels = function(words) {
 };
 
 utils.alternateConsonantCase = function(words) {
-    var toUpper = null;
+    var toUpper = utils.isUpper(words[0][0]);
     var r = [];
     words.forEach(function(w) {
         w = w.split("");
         for (var i = 0; i < w.length; i++) {
             if (utils.isConsonant(w[i])) {
-                if (toUpper === null) {
-                    toUpper = utils.isLower(w[i]);
-                    continue;
-                }
                 w[i] = toUpper && w[i].toUpperCase() || w[i].toLowerCase();
                 toUpper = !toUpper;
             }

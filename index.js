@@ -16,30 +16,37 @@ for (var times = 0; times < limit; times++) {
             url: baseUrl + "/values/" + u,
             headers: {
                 Accept: "application/json"
-            }
+            },
+            json: true
         }, function(err, response, body) {
-            console.log("GET %s", response.request.uri.href)
-            var r = JSON.parse(body);
+            console.log("GET %s", response.request.uri.href);
+            if (err) {
+                console.log(err);
+                return;
+            } else if (response.statusCode !== 200) {
+                console.log("Status: %s", response.statusCode);
+                return;
+            }
+            // var r = JSON.parse(body);
+            var r = body;
             r.uuid = u;
             lists.push(r);
 
             var base64Encoded = utils.getBase64Data(r);
 
-            console.log(baseUrl + "/encoded/" + u);
-            request({
-                url: baseUrl + "/encoded/" + u,
-                headers: {
-                    Accept: "application/json"
-                }
-            }, function(err, response, body) {
-                console.log(base64Encoded);
-                console.dir(body);
-                // process.exit();
-            });
+            // request({
+            //     url: baseUrl + "/encoded/" + u,
+            //     headers: {
+            //         Accept: "application/json"
+            //     }
+            // }, function(err, response, body) {
+            //     body = JSON.parse(body);
+            //     console.log(base64Encoded == body.encoded || ("" + base64Encoded + "\n" + body.encoded + "\n"));
+            //     // process.exit();
+            // });
 
             (function(id, b64) {
                 var postData = utils.postTemplate(b64);
-                console.log("POST %s", baseUrl + "/values/" + id);
                 //console.log(JSON.stringify(postData, null, 4));
                 request({
                     method: "POST",
@@ -48,19 +55,20 @@ for (var times = 0; times < limit; times++) {
                         Accept: "application/json",
                         "Content-Type": "application/json"
                     },
-                    json: true,
-                    body: postData
-                }, function(err, response, body) {
+                    body: postData,
+                    json: true
+                }, function(err, response, result) {
+                    console.log("POST %s", baseUrl + "/values/" + id);
                     if (err) {
                         console.log(err);
                         return;
                     }
-                    console.log(response.request.payload);
+                    result = result;
                     if (response.statusCode === 200) {
-                        console.dir(body);
+                        console.log(result.message);
                     } else {
                         console.log("Status: %s", response.statusCode);
-                        console.log(body);
+                        console.log(r);
                     }
                 });
             })(u, base64Encoded);
