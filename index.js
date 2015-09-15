@@ -35,14 +35,13 @@ var limit = argv.c || 20;
 var verifyOnly = argv.v;
 
 if (argv.hack) {
-    var obj = {};
+    var uuids = [];
     var promises = [];
     for (var c = 0; c < limit; c++) {
-        var uuid = UUID.v4();
-        obj[uuid] = "";
+        uuids.push(UUID.v4());
     }
 
-    Object.keys(obj).forEach(function(u) {
+    uuids.forEach(function(u) {
         promises.push(
             new Promise(function(resolve, reject) {
                 request({
@@ -110,8 +109,10 @@ if (argv.hack) {
 
     Promise.all(promises).then(function(results) {
         console.log(JSON.stringify(results, null, 4));
+        process.exit();
     }).catch(function(err) {
         console.error("ERROR: %s", err);
+        process.exit(1);
     });
 } else {
     for (var times = 0; times < limit; times++) {
