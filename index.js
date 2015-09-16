@@ -1,12 +1,21 @@
+"use strict";
+
 var request = require("request");
 var UUID = require("uuid");
 var Promise = require("Bluebird");
+var exit = require("exit"); //stupid windows not fluching buffers...
+
+var util = require("util");
 
 var utils = require("./utils");
 
-var baseUrl = "http://internal-devchallenge-2-dev.apphb.com";
+var startTime = new Date();
+var myExit = function(n) {
+    console.log("Took %sms", new Date() - startTime);
+    exit(n);
+};
 
-var lists = [];
+var baseUrl = "http://internal-devchallenge-2-dev.apphb.com";
 
 var usage =
     "node index <-v|-p> [-c count] \n\
@@ -20,14 +29,14 @@ var argv = require("minimist")(process.argv.slice(2));
 if (!argv.hack && argv.v && argv.p) {
     console.error("ERROR: Can't verify and post. Choose one\n");
     console.error(usage);
-    process.exit(1);
+    myExit(1);
 } else if (!argv.hack && !argv.v && !argv.p) {
     console.error("ERROR: Must verify or post. Choose one\n");
     console.error(usage);
-    process.exit(1);
+    myExit(1);
 } else if (argv.h) {
     console.log(usage);
-    process.exit();
+    myExit();
 }
 
 var limit = argv.c || 20;
@@ -125,83 +134,134 @@ if (argv.hack) {
         );
         Promise.all(morePromises).then(function(postResults) {
             console.log(JSON.stringify(postResults, null, 4));
-            process.exit();
+            myExit();
         }).catch(function(err) {
-            console.error("ERROR: %s", err);
-            process.exit(1);
+            console.error("ERROR: %s", util.inspect(err));
+            myExit(1);
         });
     }).catch(function(err) {
-        console.error("ERROR: %s", err);
-        process.exit(1);
+        console.error("ERROR: %s", util.inspect(err));
+        myExit(1);
     });
 } else {
-    for (var times = 0; times < limit; times++) {
-        var uid = UUID.v4();
-        (function(u) {
-            request({
-                url: baseUrl + "/values/" + u,
-                headers: {
-                    Accept: "application/json"
-                },
-                json: true
-            }, function(err, response, body) {
-                console.log("GET %s", response.request.uri.href);
-                if (err) {
-                    console.log(err);
-                    return;
-                } else if (response.statusCode !== 200) {
-                    console.log("Status: %s", response.statusCode);
-                    return;
-                }
-                // var r = JSON.parse(body);
-                var r = body;
-                r.uuid = u;
-                lists.push(r);
+    var uuids = [];
+    var getValuesPromises = [];
+    for (var c = 0; c < limit; c++) {
+        uuids.push(UUID.v4());
+    }
 
-                var base64Encoded = utils.getBase64Data(r);
-
-                if (verifyOnly) {
-                    request({
-                        url: baseUrl + "/encoded/" + u,
-                        headers: {
-                            Accept: "application/json"
-                        },
-                        json: true
-                    }, function(err, response, body) {
-                        //body = JSON.parse(body);
-                        //console.log(base64Encoded == body.encoded || ("" + base64Encoded + "\n" + body.encoded + "\n"));
-                        console.log(body);
-                    });
-                } else {
-                    (function(id, b64) {
-                        var postData = utils.postTemplate(b64);
-                        //console.log(JSON.stringify(postData, null, 4));
+    uuids.forEach(
+        function(u) {
+            getValuesPromises.push(
+                new Promise(
+                    function(resolve, reject) {
                         request({
-                            method: "POST",
-                            uri: baseUrl + "/values/" + id,
+                            url: baseUrl + "/values/" + u,
                             headers: {
-                                Accept: "application/json",
-                                "Content-Type": "application/json"
+                                Accept: "application/json"
                             },
-                            body: postData,
                             json: true
-                        }, function(err, response, result) {
-                            console.log("POST %s", baseUrl + "/values/" + id);
+                        }, function(err, response, body) {
                             if (err) {
                                 console.log(err);
-                                return;
-                            }
-                            result = result;
-                            if (response.statusCode === 200) {
-                                console.log(result.message);
-                            } else {
+                                return reject(err);
+                            } else if (response.statusCode !== 200) {
+                                console.log("%s %s", response.request.method, response.request.uri.href);
                                 console.log("Status: %s", response.statusCode);
-                                console.log(r);
+                                return reject(body);
                             }
+                            console.log("%s %s", response.request.method, response.request.uri.href);
+                            var r = body;
+                            r.uuid = u;
+
+                            resolve(r);
                         });
-                    })(u, base64Encoded);
-                }
-            });
-        })(uid);
-    }
+                    }
+                )
+            );
+        }
+    );
+    var algorithmTimes = [];
+    Promise.all(getValuesPromises).then(function(results) {
+        var promises = [];
+
+        results.forEach(function(r) {
+            promises.push(
+                new Promise(
+                    function(resolve, reject) {
+                        var concatenatedString;
+                        var start = new Date();
+                        try {
+                            concatenatedString = utils.algorithms[r.algorithm](r);
+                        } catch (e) {
+                            return reject([e, e.stack]);
+                        }
+
+                        var base64Encoded = utils.toBase64(concatenatedString);
+
+                        algorithmTimes.push({algorithm: r.algorithm, time: new Date() - start});
+                        if (verifyOnly) {
+                            request({
+                                url: baseUrl + "/encoded/" + r.uuid + "/" + r.algorithm,
+                                headers: {
+                                    Accept: "application/json"
+                                },
+                                json: true
+                            }, function(err, response, body) {
+                                if (err) {
+                                    console.log(err);
+                                    return reject(err);
+                                } else if (response.statusCode !== 200) {
+                                    console.log("%s %s", response.request.method, response.request.uri.href);
+                                    console.log("Status: %s", response.statusCode);
+                                    return reject(body);
+                                }
+                                console.log("%s %s", response.request.method, response.request.uri.href);
+                                console.log(base64Encoded === body.encoded || ("" + base64Encoded + "\n" + body.encoded + "\n"));
+                                resolve();
+                            });
+                        } else {
+                            var postData = utils.postTemplate(base64Encoded);
+                            request({
+                                method: "POST",
+                                uri: baseUrl + "/values/" + r.uuid + "/" + r.algorithm,
+                                headers: {
+                                    Accept: "application/json",
+                                    "Content-Type": "application/json"
+                                },
+                                body: postData,
+                                json: true
+                            }, function(err, response, result) {
+                                if (err) {
+                                    console.log(err);
+                                    return reject(err);
+                                } else if (response.statusCode !== 200) {
+                                    console.log("%s %s", response.request.method, response.request.uri.href);
+                                    console.log("Status: %s", response.statusCode);
+                                    return reject(result);
+                                }
+                                console.log("%s %s", response.request.method, response.request.uri.href);
+
+                                resolve(result);
+                            });
+                        }
+                    }
+                )
+            );
+        });
+
+        Promise.all(promises).then(function(results) {
+            console.log(JSON.stringify(results, null, 4));
+            console.dir(algorithmTimes);
+            console.log("Total: %sms", algorithmTimes.reduce(function(a, b) { return a + b.time;}, 0));
+            myExit();
+        }).catch(function(err) {
+            console.error("ERROR: %s", util.inspect(err));
+            myExit(1);
+        });
+
+    }).catch(function(err) {
+        console.error("ERROR: %s", util.inspect(err));
+        myExit(1);
+    });
 }
