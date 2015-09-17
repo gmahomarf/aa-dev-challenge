@@ -20,7 +20,7 @@ var baseUrl = "http://internal-devchallenge-2-dev.apphb.com";
 
 var usage =
     "node index <-v|-p> [-c count] \n\
-    -v          Verify Only \n\
+    -v          Verify results only \n\
     -p          Post results \n\
     -c COUNT    Number of codes to generate (default:20)\n\
     -h          You're lookin' at it\n";

@@ -1,5 +1,17 @@
 "use strict";
 
+var utils = module.exports = {};
+
+utils.postTemplate = function(value) {
+    return {
+        "encodedValue": value,
+        "emailAddress": "gmahomarf@gmail.com",
+        "name": "Gazy Mahomar",
+        "webhookUrl": "https://aa-dev-challenge.herokuapp.com/webhookv2",
+        "repoUrl": "https://github.com/gmahomarf/aa-dev-challenge"
+    };
+};
+
 var debug = function() {
     var args = [].slice.call(arguments, 0);
     if(process.env.AADEBUG === "y") {
@@ -8,6 +20,16 @@ var debug = function() {
 };
 
 var utils = module.exports = {};
+
+utils.postTemplate = function(value) {
+    return {
+        "encodedValue": value,
+        "emailAddress": "gmahomarf@gmail.com",
+        "name": "Gazy Mahomar",
+        "webhookUrl": "https://aa-dev-challenge.herokuapp.com/webhookv2",
+        "repoUrl": "https://github.com/gmahomarf/aa-dev-challenge"
+    };
+};
 
 var englishWords = [
     "drool",
@@ -165,16 +187,6 @@ utils.concatWithAsciiCodeDelimiter = function(words) {
 
 utils.concatWithAsteriskDelimiter = function(words) {
     return words.join("*");
-};
-
-utils.postTemplate = function(value) {
-    return {
-        "encodedValue": value,
-        "emailAddress": "gmahomarf@gmail.com",
-        "name": "Gazy Mahomar",
-        "webhookUrl": "https://aa-dev-challenge.herokuapp.com/webhookv2",
-        "repoUrl": "https://github.com/gmahomarf/aa-dev-challenge"
-    };
 };
 
 utils.sortAlphabeticEnglishCulture = function(a, b) {
