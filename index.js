@@ -98,6 +98,8 @@ var verifyResults = function(value) {
                 } else {
                     return Promise.resolve({
                         success: false,
+                        algorithm: value.algorithm,
+                        words: value.words,
                         calculatedCode: value.base64Encoded,
                         correctCode: body.encoded
                     });
