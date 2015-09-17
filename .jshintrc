@@ -2,7 +2,7 @@
     "bitwise": true,
     "curly": true,
     "eqeqeq": true,
-    "esnext": true,
+    "esnext": false,
     "forin": true,
     "latedef": true,
     "noarg": true,
@@ -10,6 +10,7 @@
     "strict": true,
     "undef": true,
     "unused": true,
+    "multistr": true,
     "globals": {
         "Logger": false
     }

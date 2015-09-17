@@ -116,6 +116,7 @@ utils.alternateConsonantCase = function(words) {
     words.forEach(function(w) {
         w = w.split("");
         for (var i = 0; i < w.length; i++) {
+            //if (isConsonant(w[i])){
             if (!isDigit(w[i])) {
                 w[i] = toUpper && w[i].toUpperCase() || w[i].toLowerCase();
                 toUpper = !toUpper;
@@ -169,7 +170,7 @@ utils.concatWithAsteriskDelimiter = function(words) {
 utils.postTemplate = function(value) {
     return {
         "encodedValue": value,
-        "emailAddress": "gmahomarf@gmails.com",
+        "emailAddress": "gmahomarf@gmail.com",
         "name": "Gazy Mahomar",
         "webhookUrl": "https://aa-dev-challenge.herokuapp.com/webhookv2",
         "repoUrl": "https://github.com/gmahomarf/aa-dev-challenge"
@@ -183,76 +184,71 @@ utils.sortAlphabeticEnglishCulture = function(a, b) {
     return a < b ? -1 : (a > b ? 1: 0);
 };
 
-// utils.sortAlphabeticCaseSensitiveEnglishCulture = function(a, b) {
-//     //According to tests, order in C# is: numbers, lowercase, uppercase
-//     for (var i = 0; i < a.length && i < b.length; i++) {
-//         var ai = a[i];
-//         var bi = b[i];
+utils.sortAlphabeticCaseSensitiveEnglishCulture = function(a, b) {
+    //According to tests, order in C# is: numbers, lowercase, uppercase
+    for (var i = 0; i < a.length && i < b.length; i++) {
+        var ai = a[i];
+        var bi = b[i];
 
-//         if (isDigit(ai)) {
-//             if (isDigit(bi)) {
-//                 return ai < bi ? -1 : (ai > bi ? 1 : 0);
-//             } else {
-//                 return -1;
-//             }
-//         } else if (isLower(ai)) {
-//             if (isDigit(bi)) {
-//                 return 1;
-//             } else if (isLower(bi)) {
-//                 return ai < bi ? -1 : (ai > bi ? 1 : 0);
-//             } else {
-//                 return -1;
-//             }
-//         } else { // isUpper(ai)
-//             if (isUpper(bi)) {
-//                 return ai < bi ? -1 : (ai > bi ? 1 : 0);
-//             } else {
-//                 return 1;
-//             }
-//         }
-//     }
-//     return a.length - b.length;
-// };
+        if (isDigit(ai)) {
+            if (isDigit(bi)) {
+                return ai < bi ? -1 : (ai > bi ? 1 : 0);
+            } else {
+                return -1;
+            }
+        } else if (isLower(ai)) {
+            if (isDigit(bi)) {
+                return 1;
+            } else if (isLower(bi)) {
+                return ai < bi ? -1 : (ai > bi ? 1 : 0);
+            } else {
+                return -1;
+            }
+        } else { // isUpper(ai)
+            if (isUpper(bi)) {
+                return ai < bi ? -1 : (ai > bi ? 1 : 0);
+            } else {
+                return 1;
+            }
+        }
+    }
+    return a.length - b.length;
+};
 
 utils.sortReverseAlphabeticEnglishCulture = function(a, b) {
-    //a = a.toLowerCase();
-    //b = b.toLowerCase();
-
-    //return a < b ? 1 : (a > b ? -1: 0);
-
     return -utils.sortAlphabeticEnglishCulture(a,b);
 };
 
-// utils.sortReverseAlphabeticCaseSensitiveEnglishCulture = function(a, b) {
-//     //According to tests, order in C# is: uppercase, lowercase, numbers
-//     for (var i = 0; i < a.length && i < b.length; i++) {
-//         var ai = a[i];
-//         var bi = b[i];
+utils.sortReverseAlphabeticCaseSensitiveEnglishCulture = function(a, b) {
+    //According to tests, order in C# is: uppercase, lowercase, numbers
+    for (var i = 0; i < a.length && i < b.length; i++) {
+        var ai = a[i];
+        var bi = b[i];
 
-//         if (isDigit(ai)) {
-//             if (isDigit(bi)) {
-//                 return ai < bi ? 1 : (ai > bi ? -1 : 0);
-//             } else {
-//                 return 1;
-//             }
-//         } else if (isLower(ai)) {
-//             if (isDigit(bi)) {
-//                 return -1;
-//             } else if (isLower(bi)) {
-//                 return ai < bi ? 1 : (ai > bi ? -1 : 0);
-//             } else {
-//                 return 1;
-//             }
-//         } else { // isUpper(ai)
-//             if (isUpper(bi)) {
-//                 return ai < bi ? 1 : (ai > bi ? -1 : 0);
-//             } else {
-//                 return -1;
-//             }
-//         }
-//     }
-//     return a.length - b.length;
-// };
+        if (isDigit(ai)) {
+            if (isDigit(bi)) {
+                return ai < bi ? 1 : (ai > bi ? -1 : 0);
+            } else {
+                return 1;
+            }
+        } else if (isLower(ai)) {
+            if (isDigit(bi)) {
+                return -1;
+            } else if (isLower(bi)) {
+                return ai < bi ? 1 : (ai > bi ? -1 : 0);
+            } else {
+                return 1;
+            }
+        } else { // isUpper(ai)
+            if (isUpper(bi)) {
+                return ai < bi ? 1 : (ai > bi ? -1 : 0);
+            } else {
+                return -1;
+            }
+        }
+    }
+    return a.length - b.length;
+};
 
 utils.algorithms = {
     IronMan: function(data) {
@@ -361,4 +357,4 @@ utils.v1Algorithm = function(data) {
     debug("%s returns %s", "concatenated", concatenated);
 
     return concatenated;
-}
+};

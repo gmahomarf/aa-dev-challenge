@@ -3,7 +3,8 @@
 var request = require("request");
 var UUID = require("uuid");
 var Promise = require("Bluebird");
-var exit = require("exit"); //stupid windows not fluching buffers...
+Promise.promisifyAll(request);
+var exit = require("exit"); //stupid windows not flushing buffers...
 
 var util = require("util");
 
@@ -43,225 +44,132 @@ var limit = argv.c || 20;
 
 var verifyOnly = argv.v;
 
-if (argv.hack) {
-    var uuids = [];
-    var promises = [];
-    for (var c = 0; c < limit; c++) {
-        uuids.push(UUID.v4());
-    }
+var algorithmTimes = [];
 
-    uuids.forEach(function(u) {
-        promises.push(
-            new Promise(function(resolve, reject) {
-                request({
-                    url: baseUrl + "/values/" + u,
-                    headers: {
-                        Accept: "application/json"
-                    },
-                    json: true
-                }, function(err, response, body) {
-                    if (err) {
-                        console.log(err);
-                        return reject(err);
-                    }
+var createCode = function(value) {
+    var start = new Date();
 
-                    if (response.statusCode !== 200) {
-                        console.log("GET /values/%s got status code %s", u, response.statusCode);
-                        return reject(body);
-                    }
+    var concatenatedString = utils.algorithms[value.algorithm](value);
 
-                    request({
-                        url: baseUrl + "/encoded/" + u + "/" + body.algorithm,
-                        headers: {
-                            Accept: "application/json"
-                        },
-                        json: true
-                    }, function(err, response, encodedResult) {
-                        if (err) {
-                            console.log(err);
-                            return reject(err);
-                        }
+    value.base64Encoded = utils.toBase64(concatenatedString);
 
-                        if (response.statusCode !== 200) {
-                            console.log("GET /encoded/%s got status code %s", u, response.statusCode);
-                            return reject(encodedResult);
-                        }
-
-                        resolve({
-                            u: u,
-                            encoded: encodedResult.encoded,
-                            algorithm: body.algorithm
-                        });
-                    });
-                });
-            })
-        );
+    algorithmTimes.push({
+        algorithm: value.algorithm,
+        time: new Date() - start
     });
 
-    Promise.all(promises).then(function(results) {
-        console.log(JSON.stringify(results, null, 4));
-        var morePromises = [];
-        results.forEach(
-            function(r) {
-                morePromises.push(
-                    new Promise(function(resolve, reject) {
-                        var postData = utils.postTemplate(r.encoded);
-                        request({
-                            method: "POST",
-                            uri: baseUrl + "/values/" + r.u + "/" + r.algorithm,
-                            headers: {
-                                Accept: "application/json",
-                                "Content-Type": "application/json"
-                            },
-                            body: postData,
-                            json: true
-                        }, function(err, response, result) {
-                            if (err) {
-                                console.log(err);
-                                return reject(err);
-                            }
+    return Promise.resolve(value);
+};
 
-                            if (response.statusCode !== 200) {
-                                console.log("POST /values/%s got status code %s", r.u, response.statusCode);
-                                return reject(result);
-                            }
-
-                            resolve(result);
-                        });
-                    })
-                );
-            }
-        );
-        Promise.all(morePromises).then(function(postResults) {
-            console.log(JSON.stringify(postResults, null, 4));
-            myExit();
-        }).catch(function(err) {
-            console.error("ERROR: %s", util.inspect(err));
-            myExit(1);
-        });
-    }).catch(function(err) {
-        console.error("ERROR: %s", util.inspect(err));
-        myExit(1);
-    });
-} else {
-    var uuids = [];
-    var getValuesPromises = [];
-    for (var c = 0; c < limit; c++) {
-        uuids.push(UUID.v4());
-    }
-
-    uuids.forEach(
-        function(u) {
-            getValuesPromises.push(
-                new Promise(
-                    function(resolve, reject) {
-                        request({
-                            url: baseUrl + "/values/" + u,
-                            headers: {
-                                Accept: "application/json"
-                            },
-                            json: true
-                        }, function(err, response, body) {
-                            if (err) {
-                                console.log(err);
-                                return reject(err);
-                            } else if (response.statusCode !== 200) {
-                                console.log("%s %s", response.request.method, response.request.uri.href);
-                                console.log("Status: %s", response.statusCode);
-                                return reject(body);
-                            }
-                            console.log("%s %s", response.request.method, response.request.uri.href);
-                            var r = body;
-                            r.uuid = u;
-
-                            resolve(r);
-                        });
-                    }
-                )
-            );
+var getValueAsync = function(uuid) {
+    return request.getAsync({
+        url: baseUrl + "/values/" + uuid,
+        headers: {
+            Accept: "application/json"
+        },
+        json: true
+    }).spread(function(response, body) {
+        if (response.statusCode === 200) {
+            body.uuid = uuid;
+            return Promise.resolve(body);
+        } else {
+            throw {
+                response: response,
+                body: body
+            };
         }
-    );
-    var algorithmTimes = [];
-    Promise.all(getValuesPromises).then(function(results) {
-        var promises = [];
+    });
+};
 
-        results.forEach(function(r) {
-            promises.push(
-                new Promise(
-                    function(resolve, reject) {
-                        var concatenatedString;
-                        var start = new Date();
-                        try {
-                            concatenatedString = utils.algorithms[r.algorithm](r);
-                        } catch (e) {
-                            return reject([e, e.stack]);
-                        }
-
-                        var base64Encoded = utils.toBase64(concatenatedString);
-
-                        algorithmTimes.push({algorithm: r.algorithm, time: new Date() - start});
-                        if (verifyOnly) {
-                            request({
-                                url: baseUrl + "/encoded/" + r.uuid + "/" + r.algorithm,
-                                headers: {
-                                    Accept: "application/json"
-                                },
-                                json: true
-                            }, function(err, response, body) {
-                                if (err) {
-                                    console.log(err);
-                                    return reject(err);
-                                } else if (response.statusCode !== 200) {
-                                    console.log("%s %s", response.request.method, response.request.uri.href);
-                                    console.log("Status: %s", response.statusCode);
-                                    return reject(body);
-                                }
-                                console.log("%s %s", response.request.method, response.request.uri.href);
-                                console.log(base64Encoded === body.encoded || ("" + base64Encoded + "\n" + body.encoded + "\n"));
-                                resolve();
-                            });
-                        } else {
-                            var postData = utils.postTemplate(base64Encoded);
-                            request({
-                                method: "POST",
-                                uri: baseUrl + "/values/" + r.uuid + "/" + r.algorithm,
-                                headers: {
-                                    Accept: "application/json",
-                                    "Content-Type": "application/json"
-                                },
-                                body: postData,
-                                json: true
-                            }, function(err, response, result) {
-                                if (err) {
-                                    console.log(err);
-                                    return reject(err);
-                                } else if (response.statusCode !== 200) {
-                                    console.log("%s %s", response.request.method, response.request.uri.href);
-                                    console.log("Status: %s", response.statusCode);
-                                    return reject(result);
-                                }
-                                console.log("%s %s", response.request.method, response.request.uri.href);
-
-                                resolve(result);
-                            });
-                        }
-                    }
-                )
-            );
+var verifyResults = function(value) {
+    return request.getAsync({
+            url: baseUrl + "/encoded/" + value.uuid + "/" + value.algorithm,
+            headers: {
+                Accept: "application/json"
+            },
+            json: true
+        })
+        .spread(function(response, body) {
+            if (response.statusCode === 200) {
+                if (value.base64Encoded === body.encoded) {
+                    return Promise.resolve({
+                        success: true
+                    });
+                } else {
+                    return Promise.resolve({
+                        success: false,
+                        calculatedCode: value.base64Encoded,
+                        correctCode: body.encoded
+                    });
+                }
+            } else {
+                throw {
+                    response: response,
+                    body: body
+                };
+            }
         });
+};
 
-        Promise.all(promises).then(function(results) {
-            console.log(JSON.stringify(results, null, 4));
-            console.dir(algorithmTimes);
-            console.log("Total: %sms", algorithmTimes.reduce(function(a, b) { return a + b.time;}, 0));
-            myExit();
-        }).catch(function(err) {
-            console.error("ERROR: %s", util.inspect(err));
+var postResults = function(value) {
+    var postData = utils.postTemplate(value.base64Encoded);
+    return request.postAsync({
+        uri: baseUrl + "/values/" + value.uuid + "/" + value.algorithm,
+        headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json"
+        },
+        body: postData,
+        json: true
+    }).spread(function(response, body) {
+        if (response.statusCode === 200) {
+            return Promise.resolve(body);
+        } else {
+            throw {
+                response: response,
+                body: body
+            };
+        }
+    });
+};
+
+var verifyOrPostResult = function(value) {
+    if (verifyOnly) {
+        return verifyResults(value);
+    } else {
+        return postResults(value);
+    }
+};
+
+var uuids = [];
+for (var c = 0; c < limit; c++) {
+    uuids.push(UUID.v4());
+}
+
+var go = function(uuid) {
+    return getValueAsync(uuid)
+        .then(createCode)
+        .then(verifyOrPostResult)
+        .catch(function errorHandler(err) {
+            var response = err.response;
+            if (response) {
+                console.log("%s %s", response.request.method, response.request.uri.href);
+                console.log("Status: %s", response.statusCode);
+                console.log("Response: %s", err.body);
+            } else {
+                console.error("ERROR: %s", util.inspect(err));
+            }
             myExit(1);
         });
+};
 
-    }).catch(function(err) {
-        console.error("ERROR: %s", util.inspect(err));
-        myExit(1);
-    });
-}
+Promise.map(uuids, go).then(function successHandler(results) {
+    console.log("Results:");
+    console.dir(results);
+    console.log("Algorithm times:");
+    console.dir(algorithmTimes);
+    console.log("Total algorithm time: %dms", algorithmTimes.reduce(function(a, b) {
+        return a + b.time;
+    }, 0));
+    myExit();
+});
