@@ -12,7 +12,7 @@ var utils = require("./utils");
 
 var startTime = new Date();
 var myExit = function(n) {
-    console.log("Took %sms", new Date() - startTime);
+    console.log("Took %s ms", new Date() - startTime);
     exit(n);
 };
 
@@ -28,17 +28,17 @@ var usage =
 
 var argv = require("minimist")(process.argv.slice(2));
 
-if (!argv.hack && argv.v && argv.p) {
+if (argv.h) {
+    console.log(usage);
+    exit();
+} else if (argv.v && argv.p) {
     console.error("ERROR: Can't verify and post. Choose one\n");
     console.error(usage);
-    myExit(1);
-} else if (!argv.hack && !argv.v && !argv.p) {
+    exit(1);
+} else if (!argv.v && !argv.p) {
     console.error("ERROR: Must verify or post. Choose one\n");
     console.error(usage);
-    myExit(1);
-} else if (argv.h) {
-    console.log(usage);
-    myExit();
+    exit(1);
 }
 
 var limit = argv.c || 20;
