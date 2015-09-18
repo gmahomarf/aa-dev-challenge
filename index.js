@@ -16,6 +16,7 @@ var myExit = function(n) {
     exit(n);
 };
 
+//var baseUrl = "http://localhost:6656";
 var baseUrl = "http://internal-devchallenge-2-dev.apphb.com";
 
 var usage =
@@ -47,15 +48,17 @@ var verifyOnly = argv.v;
 var algorithmTimes = [];
 
 var createCode = function(value) {
-    var start = new Date();
+    var start = process.hrtime();
 
     var concatenatedString = utils.algorithms[value.algorithm](value);
 
     value.base64Encoded = utils.toBase64(concatenatedString);
 
+    var timeTaken = process.hrtime(start); //Result of this is an array of [seconds, nanoseconds] since the argument;
+
     algorithmTimes.push({
         algorithm: value.algorithm,
-        time: new Date() - start
+        time: timeTaken[0] * 1e9 + timeTaken[1] //Hence the multiplication of seconds by 1e9 to make it all nanoseconds
     });
 
     return Promise.resolve(value);
@@ -165,13 +168,44 @@ var go = function(uuid) {
         });
 };
 
+var getHumanReadableTime = function(time) {
+    var totalNs;
+    if (Array.isArray(time)) {
+        totalNs = time.reduce(function(a, b) {
+            return a + b.time;
+        }, 0);
+    } else {
+        totalNs = time;
+    }
+
+    var getRoundedNumber = function(number, decimalPlaces) {
+        var numberString = number.toString();
+        return numberString.slice(0, numberString.indexOf(".") + decimalPlaces + 1);
+    };
+
+    //'s', 'ms', 'μs', 'ns'
+    if (totalNs >= 1e9) {
+        return getRoundedNumber(totalNs / 1e9, 3) + " s";
+    } else if (totalNs >= 1e6) {
+        return getRoundedNumber(totalNs / 1e6, 3) + " ms";
+    } else if (totalNs >= 1e3) {
+        return getRoundedNumber(totalNs / 1e3, 3) + " μs";
+    } else {
+        return getRoundedNumber(totalNs, 3) + " ns";
+    }
+};
+
 Promise.map(uuids, go).then(function successHandler(results) {
     console.log("Results:");
     console.dir(results);
-    console.log("Algorithm times:");
-    console.dir(algorithmTimes);
-    console.log("Total algorithm time: %dms", algorithmTimes.reduce(function(a, b) {
-        return a + b.time;
-    }, 0));
+    console.log("Algorithm times (in ns):");
+    console.dir(algorithmTimes.map(function(t) {
+        var r = {
+            algorithm: t.algorithm,
+            time: getHumanReadableTime(t.time)
+        };
+        return r;
+    }));
+    console.log("Total algorithm time: %s", getHumanReadableTime(algorithmTimes));
     myExit();
 });

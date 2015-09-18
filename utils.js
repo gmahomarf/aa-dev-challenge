@@ -138,8 +138,8 @@ utils.alternateConsonantCase = function(words) {
     words.forEach(function(w) {
         w = w.split("");
         for (var i = 0; i < w.length; i++) {
-            //if (isConsonant(w[i])){
-            if (!isDigit(w[i])) {
+            if (isConsonant(w[i])){
+            //if (!isDigit(w[i])) {
                 w[i] = toUpper && w[i].toUpperCase() || w[i].toLowerCase();
                 toUpper = !toUpper;
             }
